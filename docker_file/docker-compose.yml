@@ -1,0 +1,69 @@
+version: '2'
+services:
+  db:
+    image: mysql:5.7
+    volumes:
+      - "./.data/db:/var/lib/mysql"
+    restart: always
+    ports:
+      - "33060:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: peb_dns_db
+      MYSQL_USER: peb_admin
+      MYSQL_PASSWORD: passwd123
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci']
+
+  etcd:
+    image: appcelerator/etcd
+    restart: always
+    ports:
+      - "23790:2379"
+      - "23800:2380"
+
+  peb_dns:
+    build:
+      context: ./peb-dns/docker_file
+      dockerfile: python3_dockerfile
+    working_dir: /code
+    depends_on:
+      - db
+      - etcd
+      - bind
+      - nginx
+    network_mode: "service:nginx"
+    volumes:
+      - ./peb-dns:/code
+    restart: always
+    environment:
+      DB_USERNAME: peb_admin
+      DB_PASSWORD: passwd123
+      DB_HOST: db:3306
+      DB_NAME: peb_dns_db
+      ETCD_SERVER_HOST: etcd
+      ETCD_SERVER_PORT: 2379
+    command: ./docker_start.sh 8080 db:3306 peb_admin passwd123 peb_dns_db
+
+  nginx:
+    image: nginx
+    volumes:
+     - ./peb-dns/docs/install/peb_dns_nginx.conf:/etc/nginx/conf.d/mysite.template
+     - ./peb-dns:/code
+    ports:
+     - "8967:80"
+     - "8966:8080"
+    environment:
+     - NGINX_PORT=80
+    command: /bin/bash -c "envsubst < /etc/nginx/conf.d/mysite.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+
+  bind:
+    build:
+      context: ./peb-dns/docker_file
+      dockerfile: bind_dockerfile
+    depends_on:
+      - etcd
+    ports:
+      - "53:53"
+    environment:
+      DOCKER_ETCD_ADDRESS: etcd:2379
+    command: sh -c '/etc/init.d/named stop && /etc/init.d/named start && /bin/bash /root/hfdns_client_etcd_config.sh single'

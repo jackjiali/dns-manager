@@ -1,0 +1,7 @@
+FROM centos:6.9
+WORKDIR /root/
+RUN yum install -y initscripts;yum install -y bind;yum -y install epel-release;yum install -y jq;yum install -y lsof
+COPY hfdns_client_etcd_config.sh /root/
+RUN /etc/init.d/named start;chmod 777 /root/hfdns_client_etcd_config.sh
+CMD ["/bin/bash", "/root/hfdns_client_etcd_config.sh single >/dev/null 2>&1"]
+EXPOSE 53
