@@ -18,7 +18,7 @@ itsdangerous==0.24
 Jinja2==2.10
 jsonschema==2.6.0
 ldap3==2.4
-Mako==1.0.7
+Mako==1.2.2
 MarkupSafe==1.0
 mistune==0.8.3
 pyasn1==0.4.2
